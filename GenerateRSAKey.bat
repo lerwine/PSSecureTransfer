@@ -1,0 +1,1 @@
+powershell -file ".\GenerateRSAKey.ps1" %1 %2 -ExecutionPolicy Bypass
