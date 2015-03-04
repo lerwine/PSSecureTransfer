@@ -1,1 +1,1 @@
-powershell -file ".\EncryptFile.ps1" %1 %2 %3 -ExecutionPolicy Bypass
+powershell  -ExecutionPolicy Bypass -File ".\EncryptFile.ps1"
