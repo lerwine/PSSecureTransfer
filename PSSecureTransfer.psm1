@@ -9,7 +9,9 @@ catch
 }
 
 Function Get-AppDataPath {
-    $AppDataPath = $env:LOCALAPPDATA | Join-Path -ChildPath:'Leonard T. Erwine';
+    $AppDataPath = [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::ApplicationData) | Join-Path -ChildPath:'Leonard T. Erwine';
+    if (-not (Test-Path $AppDataPath)) { New-Item -Path:$AppDataPath -ItemType:'Directory' | Out-Null }
+    $AppDataPath = $AppDataPath | Join-Path -ChildPath:'PowerShell';
     if (-not (Test-Path $AppDataPath)) { New-Item -Path:$AppDataPath -ItemType:'Directory' | Out-Null }
     $AppDataPath = $AppDataPath | Join-Path -ChildPath:'PSSecureTransfer';
     if (-not (Test-Path $AppDataPath)) { New-Item -Path:$AppDataPath -ItemType:'Directory' | Out-Null }
