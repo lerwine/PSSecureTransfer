@@ -306,11 +306,6 @@ Function Export-PublicKey {
         [switch]$Force
     )
     
-    if (-not (Test-Path -Path:$Path)) {
-        throw 'File not found.';
-        return;
-    }
-
     if ((Test-Path -Path:$Path) -and (-not $Force)) {
         throw 'File already exists.';
         return;
