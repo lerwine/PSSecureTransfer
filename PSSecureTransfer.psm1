@@ -332,7 +332,7 @@ Function Export-PublicKey {
     $XmlWriter = [System.Xml.XmlWriter]::Create($Path, $XmlWriterSettings);
     $PublicKey.WriteTo($XmlWriter);
     $XmlWriter.Flush();
-    $XmlWriter.Dispose();
+    $XmlWriter = $null;
 }
 
 Function Show-PublicKeys {
