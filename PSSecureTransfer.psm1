@@ -8,8 +8,14 @@ catch
     Return;
 }
 
+$Script:LastLocalBackup = $null;
+
 Function Get-AppDataPath {
-    $AppDataPath = [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::ApplicationData) | Join-Path -ChildPath:'Leonard T. Erwine';
+    Param(
+        [switch]$Local
+    )
+    $SpecialFolder = &{ if ($Local) { [System.Environment+SpecialFolder]::LocalApplicationData } else { [System.Environment+SpecialFolder]::ApplicationData } };
+    $AppDataPath = [System.Environment]::GetFolderPath($SpecialFolder) | Join-Path -ChildPath:'Leonard T. Erwine';
     if (-not (Test-Path $AppDataPath)) { New-Item -Path:$AppDataPath -ItemType:'Directory' | Out-Null }
     $AppDataPath = $AppDataPath | Join-Path -ChildPath:'PowerShell';
     if (-not (Test-Path $AppDataPath)) { New-Item -Path:$AppDataPath -ItemType:'Directory' | Out-Null }
