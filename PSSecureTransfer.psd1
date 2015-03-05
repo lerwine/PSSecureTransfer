@@ -58,10 +58,10 @@ Description = 'Maintains public and private keys to share encrypted data.'
 # NestedModules = @()
 
 # Functions to export from this module
-FunctionsToExport = '*'
+FunctionsToExport = 'Import-PublicKey', 'ConvertTo-SafePathNames', 'Get-PublicKey', 'Export-PublicKey', 'Show-PublicKeys', 'Remove-PublicKey', 'ConvertTo-EncryptedFile', 'ConvertFrom-EncryptedFile'
 
 # Cmdlets to export from this module
-CmdletsToExport = 'Import-PublicKey', 'Get-PublicKey', 'Export-PublicKey', 'Show-PublicKeys', 'Remove-PublicKey', 'ConvertTo-EncryptedFile', 'ConvertFrom-EncryptedFile'
+CmdletsToExport = '*'
 
 # Variables to export from this module
 VariablesToExport = '*'

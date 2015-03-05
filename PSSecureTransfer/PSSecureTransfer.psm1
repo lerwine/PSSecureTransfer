@@ -1,4 +1,4 @@
-﻿try
+try
 {
     [System.Reflection.Assembly]::LoadWithPartialName("System.Security.Cryptography");
 }
@@ -24,40 +24,22 @@ Function Get-AppDataPath {
     $AppDataPath | Write-Output;
 }
 
-Function Get-PSPassDrive {
-    Param()
-    
-    if ($Script:PSPassDrive -eq $null) {
-        $PSProvider = Get-PSProvider -PSProvider:'FileSystem';
-        $CredentialsStoragePath = Get-CredentialsStoragePath;
-        $Script:PSPassDrive = Get-PSDrive | Where-Object { $_.Name -eq 'PSPass' };
-        if ($Script:PSPassDrive -ne $null) {
-            if ($_.Provider -ne $PSProvider -or $_.Root -ne $CredentialsStoragePath) {
-                Remove-PSDrive -Name:'PSPass';
-                $Script:PSPassDrive = Get-PSDrive | Where-Object { $_.Name -eq 'PSPass' };
-                if ($Script:PSPassDrive -ne $null) { throw 'Failed to remove existing "PSPass" PSDrive.' }
-            }
-        }
-
-        if ($Script:PSPassDrive -eq $null) {
-            $Script:PSPassDrive = New-PSDrive -Name:'PSPass' -PSProvider:FileSystem -Root:(Get-CredentialsStoragePath) -Description "Maps to the credentials storage location.";
-        }
-    }
-    
-    $Script:PSPassDrive | Write-Output;
-}
-
 Function ConvertTo-SafeFileName {
     [CmdletBinding()]
     Param(
         [Parameter(Mandatory = $true, Position = 0, ValueFromPipeline = $true)]
         [string[]]$InputText,
         
-        [switch]$AllowExtension
+        [switch]$AllowExtension,
+        
+        [switch]$IgnorePathSeparatorChars
     )
     
     Begin {
         [char[]]$InvalidFileNameChars = [System.IO.Path]::GetInvalidFileNameChars();
+        if ($IgnorePathSeparatorChars) {
+            [char[]]$InvalidFileNameChars = $InvalidFileNameChars | Where-Object { $char -ne [System.IO.Path]::DirectorySeparatorChar -and $char -ne [System.IO.Path]::AltDirectorySeparatorChar };
+        }
         if ($InvalidFileNameChars -notcontains '_') { [char[]]$InvalidFileNameChars += [char]'_' }
         if (-not $AllowExtension) { [char[]]$InvalidFileNameChars += [char]'.' }
     }
@@ -75,28 +57,6 @@ Function ConvertTo-SafeFileName {
                 }
                 
                 $StringBuilder.ToString() | Write-Output;
-            }
-        }
-    }
-}
-
-Function ConvertTo-SafePathNames {
-    [CmdletBinding()]
-    Param(
-        [Parameter(Mandatory = $true, Position = 0, ValueFromPipeline = $true)]
-        [string[]]$Path
-    )
-    
-    Process {
-        foreach ($p in $Path) {
-            if ($p -ne $null -and $p.Length -gt 0) {
-                    
-                $Parent = $p | Split-Path -Parent;
-                $SafePathName = $p | Split-Path -Leaf | ConvertTo-SafeFileName;
-                while ($Parent.Length -gt 0) {
-                    $SafePathName = $Parent | Split-Path -Leaf | ConvertTo-SafeFileName | Join-Path -ChildPath:$SafePathName;
-                    $Parent = $Parent | Split-Path -Parent;
-                }
             }
         }
     }
@@ -136,92 +96,6 @@ Function ConvertFrom-SafeFileName {
                     $StringBuilder.ToString() | Write-Output;
                 }
             }
-        }
-    }
-}
-
-Function ConvertFrom-SafePathNames {
-    [CmdletBinding()]
-    Param(
-        [Parameter(Mandatory = $true, Position = 0, ValueFromPipeline = $true)]
-        [string[]]$Path
-    )
-    
-    Process {
-        foreach ($p in $Path) {
-            if ($p -ne $null -and $p.Length -gt 0) {
-                    
-                $Parent = $p | Split-Path -Parent;
-                $SafePathName = $p | Split-Path -Leaf | ConvertFrom-SafeFileName;
-                while ($Parent.Length -gt 0) {
-                    $SafePathName = $Parent | Split-Path -Leaf | ConvertFrom-SafeFileName | Join-Path -ChildPath:$SafePathName;
-                    $Parent = $Parent | Split-Path -Parent;
-                }
-            }
-        }
-    }
-}
-
-Function ConvertTo-LiteralPath {
-    Param(
-        [Parameter(Mandatory = $true, Position = 0)]
-        [AllowNull()]
-        [AllowEmptyString()]
-        [string]$Path
-    )
-    
-    $PSPassDrive = Get-PSPassDrive;
-    $Root = $PSPassDrive.Root;
-    if ($Path -eq $null -or $Path -eq '') {
-        if ($PSPassDrive.CurrentLocation -ne $null -and $PSPassDrive.CurrentLocation.Length -gt 0) {
-            $Root | Join-Path -ChildPath:($PSPassDrive.CurrentLocation) | Write-Output;
-        } else {
-            $Root | Write-Output;
-        }
-    } else {
-        if ([System.IO.Path]::IsPathRooted($Path)) {
-            $Root | Join-Path -ChildPath:(ConvertTo-SafePathNames -Path:$Path) | Write-Output;
-        } else {
-            if ($PSPassDrive.CurrentLocation -ne $null -and $PSPassDrive.CurrentLocation.Length -gt 0) {
-                $Root | Join-Path -ChildPath:(ConvertTo-SafePathNames -Path:$Path) | Write-Output;
-            } else {
-                ($Root | Join-Path -ChildPath:($PSPassDrive.CurrentLocation)) | Join-Path -ChildPath:(ConvertTo-SafePathNames -Path:$Path) | Write-Output;
-            }
-        }
-    }
-}
-
-Function Show-Credentials {
-    [CmdletBinding()]
-    Param(
-        [Parameter(Mandatory = $false, Position = 0, ParameterSetname = "Relative")]
-        [string]$Path,
-        
-        [Parameter(Mandatory = $true, Position = 0, ParameterSetname = "Literal")]
-        [string]$LiteralPath,
-        
-        [Parameter(Mandatory = $false, Position = 1)]
-        [string]$Indent = "",
-        
-        [switch]$Recursive
-    )
-    
-    $ParentPath = $LiteralPath;
-    if ($Path -ne $null -and $Path.Length -gt 0) { $ParentPath = ConvertTo-LiteralPath -Path:$Path }
-    
-    if (Test-Path -Path:$ParentPath) {
-        $ParentItem = Get-Item -Path:$ParentPath;
-        if ($ParentItem.PSIsContainer) {
-            Get-ChildItem -Path:$ParentPath | ForEach-Object {
-                if ($_.PSIsContainer) {
-                    ('{0}{1}\' -f $Indent, (ConvertFrom-SafeFileName -Name:([System.IO.Path]::GetFileNameWithoutExtension($_.Name)))) | Write-Output;
-                    if ($Recursive) { Show-Credentials -LiteralPath:($_.Fullname) -Indent:($Indent + "`t") -Recursive; }
-                } else {
-                    if ($_.Extension -ieq '.xml') { ($Indent + (ConvertFrom-SafeFileName -Name:([System.IO.Path]::GetFileNameWithoutExtension($_.Name)))) | Write-Output }
-                }
-            }
-        } else {
-            if ($_.Extension -ieq '.xml') { ($Indent + (ConvertFrom-SafeFileName -Name:([System.IO.Path]::GetFileNameWithoutExtension($_.Name)))) | Write-Output }
         }
     }
 }
