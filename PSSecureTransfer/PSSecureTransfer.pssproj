@@ -26,8 +26,11 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
-  <ItemGroup />
   <ItemGroup>
+    <Content Include="Install.ps1" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Install.bat" />
     <Compile Include="PSSecureTransfer.psd1" />
     <Compile Include="PSSecureTransfer.psm1" />
     <Compile Include="Module.test.ps1" />

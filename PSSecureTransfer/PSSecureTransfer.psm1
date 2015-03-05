@@ -117,7 +117,6 @@ Function Get-PersonalKeyPaths {
 }
 
 Function Get-KeyPath {
-    [CmdletBinding()]
     Param(
         [Parameter(Mandatory = $false, Position = 0)]
         [string]$Name
@@ -127,7 +126,7 @@ Function Get-KeyPath {
         $PersonalKeyPaths = Get-PersonalKeyPaths;
         $PersonalKeyPaths.PublicKeyPath | Write-Output;
     } else {
-        $Path = Get-AppDataPath | Join-Path -ChildPath:$Name;
+        $Path = Get-AppDataPath | Join-Path -ChildPath:($Name | ConvertTo-SafeFileName);
         if (-not $Path.ToLower().EndsWith('.key')) {
             if ($Path.EndsWith('.')) {
                 $Path += 'key';
@@ -154,12 +153,12 @@ Function Import-PublicKey {
     }
 
     [xml]$xml = [IO.File]::ReadAllText($Path).Trim();
-    $Destination = Get-KeyPath -Name:($Path | Split-Path -Leaf);
+    $Destination = Get-KeyPath -Name:([System.IO.Path]::GetFileNameWithoutExtension($Path));
 
     if ($Force) {
-        Copy-Item -Path:$Path -Destination:$Destination -Force;
+        Copy-Item -Path:$Path -Destination:$Destination -Force -ErrorAction:Stop;
     } else {
-        Copy-Item -Path:$Path -Destination:$Destination;
+        Copy-Item -Path:$Path -Destination:$Destination -ErrorAction:Stop;
     }
 }
 
