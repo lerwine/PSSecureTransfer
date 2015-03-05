@@ -6,13 +6,13 @@ Function Read-YesOrNo {
         [string]$Message,
         [bool]$DefaultValue
     )
+	
+	$choices = New-Object -TypeName:'System.Collections.ObjectModel.Collection`1[System.Management.Automation.Host.ChoiceDescription]';
+	$choices.Add((New-Object -TypeName:'System.Management.Automation.Host.ChoiceDescription' -ArgumentList:'Yes'));
+	$choices.Add((New-Object -TypeName:'System.Management.Automation.Host.ChoiceDescription' -ArgumentList:'No'));
+    $YesOrNo = $Host.UI.PromptForChoice($Caption, $Message, $choices, (&{ if ($DefaultValue) { 0 } else { 1 } }));
 
-    $YesOrNO = $Host.UI.PromptForChoice($Caption, $Message, @(
-        (New-Object -TypeName:'System.Management.Automation.Host.ChoiceDescription' -ArgumentList:'Yes'),
-        (New-Object -TypeName:'System.Management.Automation.Host.ChoiceDescription' -ArgumentList:'No')
-    ), (&{ if ($DefaultValue) { 0 } else { 1 } }));
-
-    return $YesOrNO -ne $null -and $YesOrNO -eq 0;
+    return $YesOrNo -ne $null -and $YesOrNo -eq 0;
 }
 
 # for compatibility with older version of PowerShell
