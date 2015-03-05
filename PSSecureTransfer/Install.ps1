@@ -16,8 +16,9 @@ Function Read-YesOrNo {
 }
 
 # for compatibility with older version of PowerShell
-if ($PSScriptRoot -eq $null -or $PSScriptRoot -eq '') {
-    $PSScriptRoot = $MyInvocation.InvocationName;
+$InstallRoot = $PSScriptRoot;
+if ($InstallRoot -eq $null -or $InstallRoot -eq '') {
+    $InstallRoot = [System.IO.Path]::GetFullPath($MyInvocation.InvocationName) | Split-Path -Parent
 }
 
 $InstallOptions = @(
@@ -27,28 +28,23 @@ $InstallOptions = @(
             $Item = New-Object -TypeName:'System.Management.Automation.Host.ChoiceDescription' -ArgumentList:($index.ToString(), $path);
             $Item | Add-Member -Name:'Index' -MemberType:NoteProperty -Value:$Index;
             $Item | Add-Member -Name:'ModuleFolderPath' -MemberType:NoteProperty -Value:($path | Join-Path -ChildPath:($Script:ModuleName));
-            $MyInvocation.InvocationName | Write-Host;
-            $Item.ModuleFolderPath | Write-Host;
-            $Item | Add-Member -Name:'ManifestSource' -MemberType:NoteProperty -Value:($PSScriptRoot | Join-Path -ChildPath:($Script:ModuleName + '.psd1'));
+            $Item | Add-Member -Name:'ManifestSource' -MemberType:NoteProperty -Value:($InstallRoot | Join-Path -ChildPath:($Script:ModuleName + '.psd1'));
             $Item | Add-Member -Name:'ManifestPath' -MemberType:NoteProperty -Value:($Item.ModuleFolderPath | Join-Path -ChildPath:($Script:ModuleName + '.psd1'));
-            $Item | Add-Member -Name:'ModuleScriptSource' -MemberType:NoteProperty -Value:($PSScriptRoot | Join-Path -ChildPath:($Script:ModuleName + '.psm1'));
+            $Item | Add-Member -Name:'ModuleScriptSource' -MemberType:NoteProperty -Value:($InstallRoot | Join-Path -ChildPath:($Script:ModuleName + '.psm1'));
             $Item | Add-Member -Name:'ModuleScriptPath' -MemberType:NoteProperty -Value:($Item.ModuleFolderPath | Join-Path -ChildPath:($Script:ModuleName + '.psm1'));
             $index++;
             $Item | Write-Output;
         }
     }
 );
-Int32 PromptForChoice(System.String, System.String, System.Collections.ObjectModel.Collection`1[System.Management.Autom
-ation.Host.ChoiceDescription], Int32)
-System.Collections.ObjectModel.Collection`1[System.Int32] PromptForChoice(System.String, System.String, System.Collecti
-ons.ObjectModel.Collection`1[System.Management.Automation.Host.ChoiceDescription], System.Collections.Generic.IEnumerab
-le`1[System.Int32])
-$choices = $InstallOptions + (New-Object -TypeName:'System.Management.Automation.Host.ChoiceDescription' -ArgumentList:("0", "(cancel)"));
+#Int32 PromptForChoice(System.String, System.String, System.Collections.ObjectModel.Collection`1[System.Management.Automation.Host.ChoiceDescription], Int32)
+#System.Collections.ObjectModel.Collection`1[System.Int32] PromptForChoice(System.String, System.String, System.Collections.ObjectModel.Collection`1[System.Management.Automation.Host.ChoiceDescription], System.Collections.Generic.IEnumerable`1[System.Int32])
+[System.Management.Automation.Host.ChoiceDescription[]]$choices = $InstallOptions + (New-Object -TypeName:'System.Management.Automation.Host.ChoiceDescription' -ArgumentList:("0", "(cancel)"));
 $index = $Host.UI.PromptForChoice("Installation Location", (@(
     'Select root path for module installation';
     '';
-    $choices | ForEach-Object { '{0}: {1}' -f $_.Label, $_.ModuleFolderPath }) | Out-String).Trim(), $choices, $choices.Count - 1);
-if ($index -eq $null -or $index -lt 0 -or $index -ge $choices.Count -or $choices[$index].Path -eq $null) {
+    $choices | ForEach-Object { '{0}: {1}' -f $_.Label, $_.HelpMessage }) | Out-String).Trim(), $choices, $choices.Count - 1);
+if ($index -eq $null -or $index -lt 0 -or $index -ge $choices.Count -or $choices[$index].ModuleFolderPath -eq $null) {
     return;
 }
 
@@ -61,7 +57,7 @@ $actionMessages = @(
     '' | Write-Output;
 
     foreach ($Item in $InstallOptions) {
-        $Item | Add-Member -Name:'IsSelected' -MemberType:NoteProperty -Value:($_.Index -eq $index);
+        $Item | Add-Member -Name:'IsSelected' -MemberType:NoteProperty -Value:($Item.Index -eq $index);
         if (Test-Path -Path:($Item.ModuleFolderPath)) {
             $verb = &{ if ($Item.IsSelected) { 'overwrite' } else { 'remove' } };
             if ((Test-Path -Path:($Item.ManifestPath)) -or (Test-Path -Path:($Item.ModuleScriptPath))) {
@@ -140,7 +136,11 @@ if ($ToRemove.Count -gt 0) {
     foreach ($Item in $ToRemove) {
         Write-Progress -Activity:'Remove Folders' -Status:'In Progress' -CurrentOperation:('Remove {0}' -f $Item.ModuleFolderPath) -PercentComplete:(($index * 100) / $ToRemove.Count);
         $index++;
-        Remove-Item -Path:($Item.ModuleFolderPath) -Force;
+        if (Test-Path -Path:($Item.ModuleFolderPath) -PathType:Container) {
+            Remove-Item -Path:($Item.ModuleFolderPath) -Recurse -Force;
+        } else {
+            Remove-Item -Path:($Item.ModuleFolderPath) -Force;
+        }
         if (Test-Path -Path:($Item.ModuleFolderPath)) {
             Write-Progress -Activity:'Remove Folders' -Status:'Failed' -CurrentOperation:('Remove {0}' -f $Item.ModuleFolderPath) -PercentComplete:100 -Completed;
             ('Failed to remove {0}' -f $Item.ModuleFolderPath) | Write-Warning;
@@ -157,16 +157,6 @@ $Item = $InstallOptions | Where-Object { $_.IsSelected };
 $actionCount = 2;
 $completedCount = 1;
 if (Test-Path -Path:($Item.ModuleFolderPath)) {
-    $actionCount = 3;
-    Write-Progress -Activity:'Install Module' -Status:'In Progress' -CurrentOperation:('Create {0}' -f $Item.ModuleFolderPath) -PercentComplete:0;
-    New-Item -Path:($Item.ModuleFolderPath) -ItemType:Directory;
-    if (-not (Test-Path -Path:($Item.ModuleFolderPath))) {
-        Write-Progress -Activity:'Install Module' -Status:'Failed' -CurrentOperation:('Create {0}' -f $Item.ModuleFolderPath) -PercentComplete:100 -Completed;
-        ('Failed to create {0}' -f $Item.ModuleFolderPath) | Write-Warning;
-        'Aborted.' | Write-Warning;
-        return;
-    }
-} else {
     Write-Progress -Activity:'Install Module' -Status:'In Progress' -CurrentOperation:('Replace contents of {0}' -f $Item.ModuleFolderPath) -PercentComplete:0;
     $ToDelete = @(Get-ChildItem -Path:($Item.ModuleFolderPath) | Where-Object { $_.FullName -ine $Item.ManifestPath -and $_.FullName -ine $Item.ModuleScriptPath });
     $actionCount += $ToDelete.Count;
@@ -174,7 +164,11 @@ if (Test-Path -Path:($Item.ModuleFolderPath)) {
         $ToDelete | ForEach-Object {
             Write-Progress -Activity:'Install Module' -Status:'In Progress' -CurrentOperation:('Delete {0}' -f $_.FullName) -PercentComplete:(($completedCount * 100) / $actionCount);
             $completedCount++;
-            Remove-Item -Path:($_.FullName) -Force;
+            if (Test-Path -Path:($_.ModuleFolderPath) -PathType:Container) {
+                Remove-Item -Path:($_.FullName) -Recurse -Force;
+            } else {
+                Remove-Item -Path:($_.FullName) -Force;
+            }
             if (Test-Path -Path:($_.FullName)) {
                 Write-Progress -Activity:'Install Module' -Status:'Failed' -CurrentOperation:('Remove {0}' -f $_.FullName) -PercentComplete:100 -Completed;
                 ('Failed to remove {0}' -f $_.FullName) | Write-Warning;
@@ -182,6 +176,16 @@ if (Test-Path -Path:($Item.ModuleFolderPath)) {
                 return;
             }
         }
+    }
+} else {
+    $actionCount = 3;
+    Write-Progress -Activity:'Install Module' -Status:'In Progress' -CurrentOperation:('Create {0}' -f $Item.ModuleFolderPath) -PercentComplete:0;
+    New-Item -Path:($Item.ModuleFolderPath) -ItemType:Directory | Out-Null;
+    if (-not (Test-Path -Path:($Item.ModuleFolderPath))) {
+        Write-Progress -Activity:'Install Module' -Status:'Failed' -CurrentOperation:('Create {0}' -f $Item.ModuleFolderPath) -PercentComplete:100 -Completed;
+        ('Failed to create {0}' -f $Item.ModuleFolderPath) | Write-Warning;
+        'Aborted.' | Write-Warning;
+        return;
     }
 }
 
