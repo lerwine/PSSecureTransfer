@@ -37,8 +37,7 @@ $InstallOptions = @(
         }
     }
 );
-#Int32 PromptForChoice(System.String, System.String, System.Collections.ObjectModel.Collection`1[System.Management.Automation.Host.ChoiceDescription], Int32)
-#System.Collections.ObjectModel.Collection`1[System.Int32] PromptForChoice(System.String, System.String, System.Collections.ObjectModel.Collection`1[System.Management.Automation.Host.ChoiceDescription], System.Collections.Generic.IEnumerable`1[System.Int32])
+
 [System.Management.Automation.Host.ChoiceDescription[]]$choices = $InstallOptions + (New-Object -TypeName:'System.Management.Automation.Host.ChoiceDescription' -ArgumentList:("0", "(cancel)"));
 $index = $Host.UI.PromptForChoice("Installation Location", (@(
     'Select root path for module installation';
