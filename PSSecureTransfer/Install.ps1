@@ -46,7 +46,7 @@ $index = $Host.UI.PromptForChoice("Installation Location", (@(
     '';
     $choices | ForEach-Object { '{0}: {1}' -f $_.Label, $_.HelpMessage }) | Out-String).Trim(), $choices, $choices.Count - 1);
 ('Selected {0} = {1}' -f $index, $InstallOptions[$index].ModuleFolderPath) | Write-Host;
-if ($index -eq $null -or $index -lt 0 -or $index -ge $InstallOptions.Count -or $InstallOptions[$index].ModuleFolderPath -eq $null) {
+if ($index -eq $null -or $index -lt 0 -or $index -ge $InstallOptions.Count) {
     return;
 }
 
