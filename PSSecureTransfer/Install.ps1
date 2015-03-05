@@ -38,12 +38,15 @@ $InstallOptions = @(
     }
 );
 
-[System.Management.Automation.Host.ChoiceDescription[]]$choices = $InstallOptions + (New-Object -TypeName:'System.Management.Automation.Host.ChoiceDescription' -ArgumentList:("0", "(cancel)"));
+$choices = New-Object -TypeName:'System.Collections.ObjectModel.Collection`1[System.Management.Automation.Host.ChoiceDescription]';
+foreach ($Item in $InstallOptions) { $choices.Add($Item) }
+$choices.Add((New-Object -TypeName:'System.Management.Automation.Host.ChoiceDescription' -ArgumentList:("0", "(cancel)")));
 $index = $Host.UI.PromptForChoice("Installation Location", (@(
     'Select root path for module installation';
     '';
     $choices | ForEach-Object { '{0}: {1}' -f $_.Label, $_.HelpMessage }) | Out-String).Trim(), $choices, $choices.Count - 1);
-if ($index -eq $null -or $index -lt 0 -or $index -ge $choices.Count -or $choices[$index].ModuleFolderPath -eq $null) {
+('Selected {0} = {1}' -f $index, $InstallOptions[$index].ModuleFolderPath) | Write-Host;
+if ($index -eq $null -or $index -lt 0 -or $index -ge $InstallOptions.Count) {
     return;
 }
 
