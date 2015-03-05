@@ -32,7 +32,6 @@ $InstallOptions = @(
             $Item | Add-Member -Name:'ManifestPath' -MemberType:NoteProperty -Value:($Item.ModuleFolderPath | Join-Path -ChildPath:($Script:ModuleName + '.psd1'));
             $Item | Add-Member -Name:'ModuleScriptSource' -MemberType:NoteProperty -Value:($InstallRoot | Join-Path -ChildPath:($Script:ModuleName + '.psm1'));
             $Item | Add-Member -Name:'ModuleScriptPath' -MemberType:NoteProperty -Value:($Item.ModuleFolderPath | Join-Path -ChildPath:($Script:ModuleName + '.psm1'));
-			('Created item with {0}' -f $Item.ModuleFolderPath) | Write-Host;
             $index++;
             $Item | Write-Output;
         }
