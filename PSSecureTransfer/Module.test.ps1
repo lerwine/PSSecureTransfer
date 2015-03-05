@@ -7,16 +7,23 @@ $KeyExportPath = [System.IO.Path]::GetTempPath() | Join-Path -ChildPath:$TempKey
 Export-PublicKey -Path:$KeyExportPath;
 Import-PublicKey -Path:$KeyExportPath;
 
+$SourcePath = [System.IO.Path]::GetTempFileName();
 $EncryptedPath = [System.IO.Path]::GetTempFileName();
 
-$OriginalPath = $PSScriptRoot | Join-Path -ChildPath:'Install.ps1';
-ConvertTo-EncryptedFile -Key:$TempKeyName -Path:$OriginalPath -Destination:$EncryptedPath -Force;
+$Random = New-Object -TypeName:'System.Random';
+$StringBuilder = New-Object -TypeName:'System.Text.StringBuilder';
+for ($i= 0; $i -lt 4096; $i++) {
+	[char]$c = $Random.Next(255);
+	$StringBuilder.Append($c) | Out-Null;
+}
+[System.IO.File]::WriteAllText($SourcePath, $StringBuilder.ToString());
+ConvertTo-EncryptedFile -Key:$TempKeyName -Path:$SourcePath -Destination:$EncryptedPath -Force;
 
 $DecryptedPath = [System.IO.Path]::GetTempFileName();
 
 ConvertFrom-EncryptedFile -Path:$EncryptedPath -Destination:$DecryptedPath -Force;
 
-if ([System.IO.File]::ReadAllText($OriginalPath) -ceq [System.IO.File]::ReadAllText($DecryptedPath)) {
+if ([System.IO.File]::ReadAllText($SourcePath) -ceq [System.IO.File]::ReadAllText($DecryptedPath)) {
     'Decryption successful.' | Write-Output;
 } else {
     'Decryption failed.' | Write-Warning;
