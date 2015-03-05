@@ -6,13 +6,13 @@ Function Read-YesOrNo {
         [string]$Message,
         [bool]$DefaultValue
     )
+	
+	$choices = New-Object -TypeName:'System.Collections.ObjectModel.Collection`1[System.Management.Automation.Host.ChoiceDescription]';
+	$choices.Add((New-Object -TypeName:'System.Management.Automation.Host.ChoiceDescription' -ArgumentList:'Yes'));
+	$choices.Add((New-Object -TypeName:'System.Management.Automation.Host.ChoiceDescription' -ArgumentList:'No'));
+    $YesOrNo = $Host.UI.PromptForChoice($Caption, $Message, $choices, (&{ if ($DefaultValue) { 0 } else { 1 } }));
 
-    $YesOrNO = $Host.UI.PromptForChoice($Caption, $Message, @(
-        (New-Object -TypeName:'System.Management.Automation.Host.ChoiceDescription' -ArgumentList:'Yes'),
-        (New-Object -TypeName:'System.Management.Automation.Host.ChoiceDescription' -ArgumentList:'No')
-    ), (&{ if ($DefaultValue) { 0 } else { 1 } }));
-
-    return $YesOrNO -ne $null -and $YesOrNO -eq 0;
+    return $YesOrNo -ne $null -and $YesOrNo -eq 0;
 }
 
 # for compatibility with older version of PowerShell
@@ -32,18 +32,22 @@ $InstallOptions = @(
             $Item | Add-Member -Name:'ManifestPath' -MemberType:NoteProperty -Value:($Item.ModuleFolderPath | Join-Path -ChildPath:($Script:ModuleName + '.psd1'));
             $Item | Add-Member -Name:'ModuleScriptSource' -MemberType:NoteProperty -Value:($InstallRoot | Join-Path -ChildPath:($Script:ModuleName + '.psm1'));
             $Item | Add-Member -Name:'ModuleScriptPath' -MemberType:NoteProperty -Value:($Item.ModuleFolderPath | Join-Path -ChildPath:($Script:ModuleName + '.psm1'));
+			('Created item with {0}' -f $Item.ModuleFolderPath) | Write-Host;
             $index++;
             $Item | Write-Output;
         }
     }
 );
 
-[System.Management.Automation.Host.ChoiceDescription[]]$choices = $InstallOptions + (New-Object -TypeName:'System.Management.Automation.Host.ChoiceDescription' -ArgumentList:("0", "(cancel)"));
+$choices = New-Object -TypeName:'System.Collections.ObjectModel.Collection`1[System.Management.Automation.Host.ChoiceDescription]';
+foreach ($Item in $InstallOptions) { $choices.Add($Item) }
+$choices.Add((New-Object -TypeName:'System.Management.Automation.Host.ChoiceDescription' -ArgumentList:("0", "(cancel)")));
 $index = $Host.UI.PromptForChoice("Installation Location", (@(
     'Select root path for module installation';
     '';
     $choices | ForEach-Object { '{0}: {1}' -f $_.Label, $_.HelpMessage }) | Out-String).Trim(), $choices, $choices.Count - 1);
-if ($index -eq $null -or $index -lt 0 -or $index -ge $choices.Count -or $choices[$index].ModuleFolderPath -eq $null) {
+('Selected {0} = {1}' -f $index, $InstallOptions[$index].ModuleFolderPath) | Write-Host;
+if ($index -eq $null -or $index -lt 0 -or $index -ge $InstallOptions.Count -or $InstallOptions[$index].ModuleFolderPath -eq $null) {
     return;
 }
 
