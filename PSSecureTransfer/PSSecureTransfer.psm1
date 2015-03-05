@@ -170,13 +170,11 @@ Function Get-PublicKey {
     )
 
     if ($Name -eq $null -or $Name -eq '') {
-        [xml]$xml = [IO.File]::ReadAllText((Get-KeyPath)).Trim();
-        $xml | Write-Output;
+        [IO.File]::ReadAllText((Get-KeyPath)).Trim() | Write-Output;
     } else {
         $Path = Get-KeyPath -Name:$Name;
         if (Test-Path -Path:$Path) {
-            [xml]$xml = [IO.File]::ReadAllText($Path).Trim();
-            $xml | Write-Output;
+            [IO.File]::ReadAllText($Path).Trim() | Write-Output;
         }
     }
 }
@@ -209,15 +207,7 @@ Function Export-PublicKey {
         return;
     }
 
-    $XmlWriterSettings = New-Object -TypeName:'System.Xml.XmlWriterSettings';
-    $XmlWriterSettings.CloseOutput = $false;
-    $XmlWriterSettings.Encoding = [System.Text.Encoding]::UTF8;
-    $XmlWriterSettings.Indent = $true;
-    if (Test-Path -Path:$Path) { Remove-Item -Path:$Path -Force }
-    $XmlWriter = [System.Xml.XmlWriter]::Create($Path, $XmlWriterSettings);
-    $PublicKey.WriteTo($XmlWriter);
-    $XmlWriter.Flush();
-    $XmlWriter = $null;
+    [IO.File]::WriteAllText($Path, $PublicKey);
 }
 
 Function Show-PublicKeys {
@@ -275,7 +265,7 @@ Function ConvertTo-EncryptedFile {
 
     $RSA = New-Object -TypeName:'System.Security.Cryptography.RSACryptoServiceProvider' -ArgumentList:2048;
     try {
-        $RSA.FromXMLString($xmlData);
+        $RSA.FromXMLString($PublicKey);
     } catch {
         throw 'Invalid public key';
         $RSA.Dispose();
@@ -459,6 +449,7 @@ Function ConvertFrom-EncryptedFile {
         $securePrivateKey = $null;
         throw;
     }
+
     if ($securePrivateKey -eq $null) { return }
 
     $rjndl = New-Object -Typename:System.Security.Cryptography.RijndaelManaged;
@@ -534,8 +525,8 @@ Function ConvertFrom-EncryptedFile {
 
         $KeyEncrypted = New-Object -Typename:Byte[] -ArgumentList:$KeyLengthValue;
         $IV = New-Object -Typename:Byte[] -ArgumentList:$IVLengthValue;
-        $EncryptedFS.Read($KeyEncrypted, 0, $KeyLengthValue);
-        $EncryptedFS.Read($IV, 0, $IVLengthValue);
+        $EncryptedFS.Read($KeyEncrypted, 0, $KeyLengthValue) | Out-Null;
+        $EncryptedFS.Read($IV, 0, $IVLengthValue) | Out-Null;
         $KeyDecrypted = $RSA.Decrypt($KeyEncrypted, $false);
         $transform = $rjndl.CreateDecryptor($KeyDecrypted, $IV);
     }

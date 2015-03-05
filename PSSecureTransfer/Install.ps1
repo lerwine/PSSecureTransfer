@@ -15,33 +15,44 @@ Function Read-YesOrNo {
     return $YesOrNO -ne $null -and $YesOrNO -eq 0;
 }
 
+# for compatibility with older version of PowerShell
+if ($PSScriptRoot -eq $null -or $PSScriptRoot -eq '') {
+    $PSScriptRoot = $MyInvocation.InvocationName;
+}
+
 $InstallOptions = @(
     $index = 1;
     foreach ($path in $env:PSModulePath.Split([System.IO.Path]::PathSeparator)) {
         if ($path.Length -gt 0) {
             $Item = New-Object -TypeName:'System.Management.Automation.Host.ChoiceDescription' -ArgumentList:($index.ToString(), $path);
-            $Item | Add-Member -Name:'Index' -MemberType:NoteProperty -Value:$Index
+            $Item | Add-Member -Name:'Index' -MemberType:NoteProperty -Value:$Index;
             $Item | Add-Member -Name:'ModuleFolderPath' -MemberType:NoteProperty -Value:($path | Join-Path -ChildPath:($Script:ModuleName));
+            $MyInvocation.InvocationName | Write-Host;
+            $Item.ModuleFolderPath | Write-Host;
             $Item | Add-Member -Name:'ManifestSource' -MemberType:NoteProperty -Value:($PSScriptRoot | Join-Path -ChildPath:($Script:ModuleName + '.psd1'));
             $Item | Add-Member -Name:'ManifestPath' -MemberType:NoteProperty -Value:($Item.ModuleFolderPath | Join-Path -ChildPath:($Script:ModuleName + '.psd1'));
-            $Item | Add-Member -Name:'ModuleScriptSource' -MemberType:NoteProperty -Value:($PSScriptRoo | Join-Path -ChildPath:($Script:ModuleName + '.psm1'));
+            $Item | Add-Member -Name:'ModuleScriptSource' -MemberType:NoteProperty -Value:($PSScriptRoot | Join-Path -ChildPath:($Script:ModuleName + '.psm1'));
             $Item | Add-Member -Name:'ModuleScriptPath' -MemberType:NoteProperty -Value:($Item.ModuleFolderPath | Join-Path -ChildPath:($Script:ModuleName + '.psm1'));
             $index++;
             $Item | Write-Output;
         }
     }
 );
-
+Int32 PromptForChoice(System.String, System.String, System.Collections.ObjectModel.Collection`1[System.Management.Autom
+ation.Host.ChoiceDescription], Int32)
+System.Collections.ObjectModel.Collection`1[System.Int32] PromptForChoice(System.String, System.String, System.Collecti
+ons.ObjectModel.Collection`1[System.Management.Automation.Host.ChoiceDescription], System.Collections.Generic.IEnumerab
+le`1[System.Int32])
 $choices = $InstallOptions + (New-Object -TypeName:'System.Management.Automation.Host.ChoiceDescription' -ArgumentList:("0", "(cancel)"));
 $index = $Host.UI.PromptForChoice("Installation Location", (@(
     'Select root path for module installation';
     '';
     $choices | ForEach-Object { '{0}: {1}' -f $_.Label, $_.ModuleFolderPath }) | Out-String).Trim(), $choices, $choices.Count - 1);
 if ($index -eq $null -or $index -lt 0 -or $index -ge $choices.Count -or $choices[$index].Path -eq $null) {
-    $index = -1
-} else {
-    $index++;
+    return;
 }
+
+$index++;
 
 $hasFolderToRemove = $false;
 
