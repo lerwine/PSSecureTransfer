@@ -4,6 +4,7 @@ try
 }
 catch 
 {
+    $_ | Write-Warning;
     Write-Error "Could not load required assembly.";
     Return;
 }
@@ -267,6 +268,7 @@ Function ConvertTo-EncryptedFile {
     try {
         $RSA.FromXMLString($PublicKey);
     } catch {
+        $_ | Write-Warning;
         throw 'Invalid public key';
         $RSA.Dispose();
         $RSA = $null;
@@ -279,7 +281,7 @@ Function ConvertTo-EncryptedFile {
     $rjndl.BlockSize = 256;
     $rjndl.Mode = [System.Security.Cryptography.CipherMode]::CBC;
     $transform = $rjndl.CreateEncryptor();
-    $EncryptedKeyData = $rsa.Encrypt($rjndl.Key, $false);
+    $EncryptedKeyData = $rsa.Encrypt($rjndl.Key, $true);
     $KeyLengthData = New-Object -TypeName:Byte[] -ArgumentList:4;
     $IVLengthData = New-Object -TypeName:Byte[] -ArgumentList:4;
     $KeyLengthValue = $EncryptedKeyData.Length;
@@ -293,8 +295,8 @@ Function ConvertTo-EncryptedFile {
     }
     catch
     {
+        $_ | Write-Warning;
         Write-Error "Error reading source file";
-        $error;
         Return;
     }
     $EncryptedFS = $null;
@@ -304,10 +306,10 @@ Function ConvertTo-EncryptedFile {
     }
     catch
     {
+        $_ | Write-Warning;
         Write-Error "Error creating output file";
         $SourceFS.Close();
         $SourceFS.Dispose();
-        $error;
         Return;
     }
 
@@ -320,12 +322,12 @@ Function ConvertTo-EncryptedFile {
     }
     catch
     {
+        $_ | Write-Warning;
         Write-Error "Error writing encrypted heading";
         $SourceFS.Close();
         $SourceFS.Dispose();
         $EncryptedFS.Close();
         $EncryptedFS.Dispose();
-        $error;
         Return;
     }
 
@@ -336,12 +338,12 @@ Function ConvertTo-EncryptedFile {
     }
     catch
     {
+        $_ | Write-Warning;
         Write-Error "Error creating encryption output stream";
         $SourceFS.Close();
         $SourceFS.Dispose();
         $EncryptedFS.Close();
         $EncryptedFS.Dispose();
-        $error;
         Return;
     }
 
@@ -363,8 +365,8 @@ Function ConvertTo-EncryptedFile {
     }
     catch
     {
+        $_ | Write-Warning;
         Write-Error "Error writing encrypted data";
-        $error;
     }
     $SourceFS.Close();
     $SourceFS.Dispose();
@@ -458,10 +460,6 @@ Function ConvertFrom-EncryptedFile {
     $rjndl.Mode = [System.Security.Cryptography.CipherMode]::CBC;
     $KeyLengthData = New-Object -Typename:Byte[] -ArgumentList:4;
     $IVLengthData = New-Object -Typename:Byte[] -ArgumentList:4;
-    #$lKey = $keyEncrypted.Length;
-    #$KeyLengthData = [System.BitConverter]::GetBytes($lKey);
-    #$lIV = $rjndl.IV.Length;
-    #$IVLengthData = [System.BitConverter]::GetBytes($lIV);
 
     $encodedData = [IO.File]::ReadAllText($Path);
 
@@ -473,8 +471,8 @@ Function ConvertFrom-EncryptedFile {
     }
     catch
     {
+        $_ | Write-Warning;
         Write-Error "Error reading source file";
-        $error;
         Return;
     }
 
@@ -486,8 +484,8 @@ Function ConvertFrom-EncryptedFile {
     }
     catch
     {
+        $_ | Write-Warning;
         Write-Error "Error reading from source file";
-        $error;
         Return;
     }
 
@@ -503,8 +501,8 @@ Function ConvertFrom-EncryptedFile {
     }
     catch
     {
+        $_ | Write-Warning;
         Write-Error "Error reading from source file";
-        $error;
         Return;
     }
 
@@ -520,18 +518,22 @@ Function ConvertFrom-EncryptedFile {
         $KeyLengthValue = [System.BitConverter]::ToInt32($KeyLengthData, 0);
         $IVLengthValue = [System.BitConverter]::ToInt32($IVLengthData, 0);
 
-        # $startC = $KeyLengthValue + $IVLengthValue + 8;
-        # $lenC = $EncryptedFS.Length - $startC;
-
         $KeyEncrypted = New-Object -Typename:Byte[] -ArgumentList:$KeyLengthValue;
         $IV = New-Object -Typename:Byte[] -ArgumentList:$IVLengthValue;
         $EncryptedFS.Read($KeyEncrypted, 0, $KeyLengthValue) | Out-Null;
         $EncryptedFS.Read($IV, 0, $IVLengthValue) | Out-Null;
-        $KeyDecrypted = $RSA.Decrypt($KeyEncrypted, $false);
+        $KeyDecrypted = $RSA.Decrypt($KeyEncrypted, $true);
         $transform = $rjndl.CreateDecryptor($KeyDecrypted, $IV);
     }
     catch
     {
+        $_ | Write-Warning;
+        Write-Error "Error initializing decryptor.";
+        if ($EncryptedFS -ne $null) {
+            $EncryptedFS.Close();
+            $EncryptedFS.Dispose();
+        }
+        Return;
     }
 
     $DestinationFS = $null;
@@ -541,10 +543,10 @@ Function ConvertFrom-EncryptedFile {
     }
     catch
     {
+        $_ | Write-Warning;
         Write-Error "Error creating output file";
         $EncryptedFS.Close();
         $EncryptedFS.Dispose();
-        $error;
         Return;
     }
 
@@ -555,12 +557,12 @@ Function ConvertFrom-EncryptedFile {
     }
     catch
     {
+        $_ | Write-Warning;
         Write-Error "Error creating decryption output stream";
         $EncryptedFS.Close();
         $EncryptedFS.Dispose();
         $DestinationFS.Close();
         $DestinationFS.Dispose();
-        $error;
         Return;
     }
 
@@ -582,6 +584,7 @@ Function ConvertFrom-EncryptedFile {
     }
     catch
     {
+        $_ | Write-Warning;
         Write-Error "Error writing decrypted data";
     }
     $EncryptedFS.Close();
